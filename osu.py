@@ -2,6 +2,7 @@ import re
 import time
 import sys
 import os
+import random
 import keyboard
 import threading
 import ctypes
@@ -120,7 +121,7 @@ class OsuRelaxCheatsEngine:
         pass
 
     def run_playback_loop(self, start_key, key_1, key_2, time_reader):
-        """Core execution loop with pause/fail/retry detection."""
+        """Core execution loop with pause/fail/retry detection and humanization."""
         if hasattr(time_reader, 'anchor_now'):
             print("[*] Ready — press Z/X when you start playing")
             while self.is_running:
@@ -147,6 +148,12 @@ class OsuRelaxCheatsEngine:
         paused = False
         pause_start = 0.0
         esc_was_pressed = False
+
+        def jitter(base_ms, spread=8):
+            return base_ms + random.randint(-spread, spread)
+
+        def tap_duration():
+            return random.uniform(0.012, 0.055)
 
         while self.is_running and next_idx < len(self.hit_objects):
             if keyboard.is_pressed('esc'):
@@ -181,13 +188,14 @@ class OsuRelaxCheatsEngine:
                 return
 
             obj = self.hit_objects[next_idx]
+            hit_time = jitter(obj['time'], spread=6)
 
-            if game_ms >= obj['time']:
+            if game_ms >= hit_time:
                 current_key = key_2 if current_key == key_1 else key_1
 
                 if obj['is_slider']:
                     keyboard.press(current_key)
-                    release_ms = obj['time'] + obj['duration']
+                    release_ms = jitter(obj['time'] + obj['duration'], spread=10)
                     while self.is_running and not paused:
                         if keyboard.is_pressed('esc'):
                             break
@@ -198,7 +206,7 @@ class OsuRelaxCheatsEngine:
                     keyboard.release(current_key)
                 else:
                     keyboard.press(current_key)
-                    time.sleep(0.015)
+                    time.sleep(tap_duration())
                     keyboard.release(current_key)
 
                 next_idx += 1
@@ -242,7 +250,7 @@ def find_osu_process():
         return None, None
 
     h_process = ctypes.windll.kernel32.OpenProcess(
-        0x0010 | 0x0400, False, pid
+        0x0010 | 0x0400 | 0x0008, False, pid
     )
     if not h_process:
         return None, None
@@ -570,7 +578,7 @@ if __name__ == "__main__":
                 pending_map = None
                 engine = None
 
-            time.sleep(1.5)
+            time.sleep(random.uniform(2.0, 4.0))
 
     except KeyboardInterrupt:
         pass
